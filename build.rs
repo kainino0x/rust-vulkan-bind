@@ -1,7 +1,7 @@
 use std::process::Command;
 
 fn main() {
-    Command::new("bindgen").args(
+    Command::new("./bindgen/target/release/bindgen").args(
         &[
             "-lvulkan-1",
             "-o", "src/vulkan.rs",

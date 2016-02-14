@@ -3,7 +3,7 @@
 extern crate vulkan;
 
 fn main() {
-    use vulkan::ffi::*;
+    use vulkan::ffi::vulkan::*;
     use std::ptr::null;
     use std::raw::Repr;
 

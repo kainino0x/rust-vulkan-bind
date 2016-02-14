@@ -1,4 +1,4 @@
-/src/vulkan.rs
+/src/ffi/generated.rs
 
 # Created by https://www.gitignore.io/api/rust,vim
 

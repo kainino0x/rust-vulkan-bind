@@ -5,7 +5,7 @@ fn main() {
         &[
             "-lvulkan",
             "-DVK_USE_PLATFORM_XCB_KHR",
-            "-o", "src/vulkan.rs",
+            "-o", "src/ffi/generated.rs",
             "-match", "vulkan.h",
             "/usr/include/vulkan/vulkan.h",
         ]).status().unwrap();

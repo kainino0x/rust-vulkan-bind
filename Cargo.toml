@@ -7,3 +7,6 @@ build = "build.rs"
 [dependencies]
 libc = "0.2"
 xcb = "0.5.0"
+
+[dev-dependencies]
+cgmath = "0.7.0"

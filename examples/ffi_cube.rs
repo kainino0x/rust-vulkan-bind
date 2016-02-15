@@ -7,8 +7,9 @@ extern crate vulkan;
 extern crate xcb;
 
 use std::ffi;
-use std::raw::Repr;
+use std::mem;
 use std::ptr::{null, null_mut};
+use std::raw::Repr;
 use cgmath::*;
 use xcb::base as xcbb;
 use xcb::xproto as xcbx;
@@ -32,7 +33,7 @@ fn main() {
     demo.prepare();
     demo.run();
 
-    demo.cleanup();
+    mem::forget(demo); // FIXME: shouldn't need this, eventually
 }
 
 struct Demo<'a> {
@@ -47,7 +48,7 @@ struct Demo<'a> {
     pause: bool,
     quit: bool,
     curFrame: i32,
-    validate: bool,
+    spin_increment: f32,
 
     current_buffer: u32,
 
@@ -231,7 +232,7 @@ impl DemoVk {
         };
 
         let inst = unsafe {
-            let mut inst: VkInstance = std::mem::uninitialized();
+            let mut inst: VkInstance = mem::uninitialized();
             vkassert(vkCreateInstance(&inst_info, null(), &mut inst));
             inst
         };
@@ -303,7 +304,7 @@ impl DemoVk {
             // TODO
         }
         let mut gpu_props: VkPhysicalDeviceProperties =
-            unsafe { std::mem::uninitialized() };
+            unsafe { mem::uninitialized() };
         unsafe {
             vkGetPhysicalDeviceProperties(gpu, &mut gpu_props);
         }
@@ -333,22 +334,22 @@ impl DemoVk {
         // Query fine-grained feature support for this device.
         //   If app has specific feature requirements then it should check
         //   supported features based on this query.
-        let mut physDevFeatures: VkPhysicalDeviceFeatures = unsafe { std::mem::uninitialized() };
+        let mut physDevFeatures: VkPhysicalDeviceFeatures = unsafe { mem::uninitialized() };
         unsafe {
             vkGetPhysicalDeviceFeatures(gpu, &mut physDevFeatures);
         }
 
-        let fpGetPhysicalDeviceSurfaceSupportKHR      = unsafe { std::mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceSupportKHR     >(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceSupportKHR"))      ) };
-        let fpGetPhysicalDeviceSurfaceCapabilitiesKHR = unsafe { std::mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceCapabilities)KHR"))) };
-        let fpGetPhysicalDeviceSurfaceFormatsKHR      = unsafe { std::mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceFormatsKHR     >(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceFormatsKHR"))      ) };
-        let fpGetPhysicalDeviceSurfacePresentModesKHR = unsafe { std::mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfacePresentModesKHR>(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfacePresentModes)KHR"))) };
-        let fpGetSwapchainImagesKHR                   = unsafe { std::mem::transmute::<_, PFN_vkGetSwapchainImagesKHR                  >(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetSwapchainImagesKHR"))                   ) };
+        let fpGetPhysicalDeviceSurfaceSupportKHR      = unsafe { mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceSupportKHR     >(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceSupportKHR"))      ) };
+        let fpGetPhysicalDeviceSurfaceCapabilitiesKHR = unsafe { mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceCapabilities)KHR"))) };
+        let fpGetPhysicalDeviceSurfaceFormatsKHR      = unsafe { mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceFormatsKHR     >(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceFormatsKHR"))      ) };
+        let fpGetPhysicalDeviceSurfacePresentModesKHR = unsafe { mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfacePresentModesKHR>(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfacePresentModes)KHR"))) };
+        let fpGetSwapchainImagesKHR                   = unsafe { mem::transmute::<_, PFN_vkGetSwapchainImagesKHR                  >(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetSwapchainImagesKHR"))                   ) };
 
         DemoVk {
-            demo_swapchain: unsafe { std::mem::uninitialized() },
+            demo_swapchain: unsafe { mem::uninitialized() },
             inst: inst,
             gpu: gpu,
-            device: unsafe { std::mem::uninitialized() },
+            device: unsafe { mem::uninitialized() },
             graphics_queue_node_index: std::u32::MAX,
             gpu_props: gpu_props,
             queue_props: queue_props,
@@ -429,7 +430,6 @@ struct DemoConfig {
     use_break: bool,
     validate: bool,
     frameCount: i32,
-    spin_increment: f32,
 }
 
 struct DemoWindowing<'a> {
@@ -449,7 +449,7 @@ impl<'a> DemoWindowing<'a> {
                 // Ignore the lifetimes on screen. I don't know why I have to
                 // do this, precisely, but I'm having trouble with the lifetime
                 // bounds in rust-xcb.
-                std::mem::transmute::<xcbx::Screen, xcbx::Screen>(screen)
+                mem::transmute::<xcbx::Screen, xcbx::Screen>(screen)
             }
         };
 
@@ -468,7 +468,6 @@ impl DemoConfig {
         use_break: false,
         validate: false,
         frameCount: std::i32::MAX,
-        spin_increment: 0.01,
     } }
 }
 
@@ -503,7 +502,25 @@ impl<'a> Demo<'a> {
 
         let windowing = DemoWindowing::new();
 
-        let demo_vk = DemoVk::new(&cfg);
+        let vk = DemoVk::new(&cfg);
+
+        Demo {
+            cfg: cfg,
+            windowing: windowing,
+            vk: vk,
+            projection_matrix: perspective(Deg::new(45f32), 1.0, 0.1, 100.0),
+            view_matrix: Matrix4::look_at(eye, origin, up),
+            model_matrix: Matrix4::identity(),
+            curFrame: 0,
+            prepared: false,
+            current_buffer: 0,
+            pause: false,
+            width: 500,
+            height: 500,
+            spin_angle: 0.01,
+            spin_increment: 0.01,
+            quit: false,
+        }
 
         //cfg.width = 500;
         //cfg.height = 500;
@@ -512,9 +529,6 @@ impl<'a> Demo<'a> {
         //cfg.spin_increment = 0.01;
         //cfg.pause = false;
 
-        //cfg.projection_matrix = perspective(Deg::new(45f32), 1.0, 0.1, 100.0);
-        //cfg.view_matrix = Matrix4::look_at(eye, origin, up);
-        //cfg.model_matrix = Matrix4::identity();
 
         //{ // init_connection
         //    // TODO: init_connection
@@ -534,8 +548,6 @@ impl<'a> Demo<'a> {
         //    device: device,
 
         //}
-
-        unimplemented!();
     }
 
     fn create_window(&mut self) {
@@ -549,7 +561,10 @@ impl<'a> Demo<'a> {
 
     fn run(&mut self) {
     }
+}
 
-    fn cleanup(&mut self) {
+impl<'a> Drop for Demo<'a> {
+    fn drop(&mut self) {
+        // TODO: cleanup
     }
 }

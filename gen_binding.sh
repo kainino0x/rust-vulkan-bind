@@ -3,7 +3,7 @@
 
 BGARGS="-DVK_USE_PLATFORM_XCB_KHR -lvulkan"
 
-TGTS="vulkan vk_ext_debug_report vk_sdk_platform"
+TGTS="vulkan vk_ext_debug_report"
 
 for tgt in $TGTS; do
     echo "$tgt"

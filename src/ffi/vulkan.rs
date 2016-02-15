@@ -24,6 +24,7 @@ pub const VK_API_VERSION: u32 = (1 << 22) | (0 << 12) | (2);
 pub const VK_KHR_SURFACE_EXTENSION_NAME: &'static str = "VK_KHR_surface";
 //#define VK_KHR_SWAPCHAIN_SPEC_VERSION     67
 //#define VK_KHR_SWAPCHAIN_EXTENSION_NAME   "VK_KHR_swapchain"
+pub const VK_KHR_SWAPCHAIN_EXTENSION_NAME: &'static str = "VK_KHR_swapchain";
 //#define VK_KHR_DISPLAY_SPEC_VERSION       21
 //#define VK_KHR_DISPLAY_EXTENSION_NAME     "VK_KHR_display"
 //#define VK_KHR_DISPLAY_SWAPCHAIN_SPEC_VERSION 9

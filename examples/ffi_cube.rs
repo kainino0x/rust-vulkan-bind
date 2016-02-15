@@ -8,6 +8,7 @@ extern crate xcb;
 
 use std::ffi;
 use std::raw::Repr;
+use std::ptr::{null, null_mut};
 use cgmath::*;
 use xcb::base as xcbb;
 use xcb::xproto as xcbx;
@@ -142,7 +143,7 @@ impl DemoVk {
         let mut instance_layer_count = 0u32;
         vkassert(unsafe {
             vkEnumerateInstanceLayerProperties(
-                &mut instance_layer_count, std::ptr::null_mut())
+                &mut instance_layer_count, null_mut())
         });
 
         let mut enabled_layer_count = 0;
@@ -168,14 +169,14 @@ impl DemoVk {
         let mut platformSurfaceExtFound = false;
         let mut extension_names: Vec<&'static str> = Vec::new();
         unsafe {
-            vkassert(vkEnumerateInstanceExtensionProperties(std::ptr::null(),
-                &mut instance_extension_count, std::ptr::null_mut()));
+            vkassert(vkEnumerateInstanceExtensionProperties(null(),
+                &mut instance_extension_count, null_mut()));
         }
         if instance_extension_count > 0 {
             let mut instance_extensions: Vec<VkExtensionProperties> =
                 Vec::with_capacity(instance_extension_count as usize);
             unsafe {
-                vkassert(vkEnumerateInstanceExtensionProperties(std::ptr::null(),
+                vkassert(vkEnumerateInstanceExtensionProperties(null(),
                     &mut instance_extension_count, instance_extensions.as_mut_ptr()));
                 instance_extensions.set_len(instance_extension_count as usize);
             }
@@ -200,7 +201,7 @@ impl DemoVk {
 
         let app = VkApplicationInfo {
             sType: Enum_VkStructureType::VK_STRUCTURE_TYPE_APPLICATION_INFO,
-            pNext: std::ptr::null(),
+            pNext: null(),
             pApplicationName: APP_SHORT_NAME.repr().data as *const i8,
             applicationVersion: 0,
             pEngineName: APP_SHORT_NAME.repr().data as *const i8,
@@ -212,13 +213,13 @@ impl DemoVk {
         let extension_names = vec_str_to_vec_ptr(&extension_names);
         let inst_info = VkInstanceCreateInfo {
             sType: Enum_VkStructureType::VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-            pNext: std::ptr::null(),
+            pNext: null(),
             pApplicationInfo: &app,
             enabledLayerCount: instance_validation_layers.len() as u32,
             ppEnabledLayerNames: if cfg.validate {
                 instance_validation_layers.as_ptr()
             } else {
-                std::ptr::null()
+                null()
             },
             enabledExtensionCount: extension_names.len() as u32,
             ppEnabledExtensionNames: extension_names.as_ptr(),
@@ -227,14 +228,14 @@ impl DemoVk {
 
         let inst = unsafe {
             let mut inst: VkInstance = std::mem::uninitialized();
-            vkassert(vkCreateInstance(&inst_info, std::ptr::null(), &mut inst));
+            vkassert(vkCreateInstance(&inst_info, null(), &mut inst));
             inst
         };
 
         let mut gpu_count = 0u32;
         // Make initial call to query gpu_count, then second call for gpu info
         unsafe {
-            vkassert(vkEnumeratePhysicalDevices(inst, &mut gpu_count, std::ptr::null_mut()));
+            vkassert(vkEnumeratePhysicalDevices(inst, &mut gpu_count, null_mut()));
         }
         assert!(gpu_count > 0);
 
@@ -252,7 +253,7 @@ impl DemoVk {
         enabled_layer_count = 0;
         let mut device_layer_count = 0u32;
         unsafe {
-            vkassert(vkEnumerateDeviceLayerProperties(gpu, &mut device_layer_count, std::ptr::null_mut()));
+            vkassert(vkEnumerateDeviceLayerProperties(gpu, &mut device_layer_count, null_mut()));
         }
 
         if device_layer_count > 0 {
@@ -266,6 +267,72 @@ impl DemoVk {
                 assert!(Self::check_layers(&device_validation_layers, &device_layers));
                 enabled_layer_count = device_validation_layers.len();
             }
+        }
+
+        // Look for device extensions
+        let mut device_extension_count = 0u32;
+        let mut swapchainExtFound = false;
+        let mut extension_names: Vec<&'static str> = Vec::new();
+        unsafe {
+            vkassert(vkEnumerateDeviceExtensionProperties(
+                    gpu, null(), &mut device_extension_count, null_mut()));
+        }
+
+        if device_extension_count > 0 {
+            let mut device_extensions =
+                Vec::with_capacity(device_extension_count as usize);
+            unsafe {
+                vkassert(vkEnumerateDeviceExtensionProperties(
+                        gpu, null(), &mut device_extension_count,
+                        device_extensions.as_mut_ptr()));
+                device_extensions.set_len(device_extension_count as usize);
+            }
+
+            for ext in device_extensions {
+                if carr_eq_str(&ext.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) {
+                    swapchainExtFound = true;
+                    extension_names.push(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+                }
+            }
+        }
+        assert!(swapchainExtFound);
+
+        if cfg.validate {
+            // TODO
+        }
+        let mut gpu_props: VkPhysicalDeviceProperties =
+            unsafe { std::mem::uninitialized() };
+        unsafe {
+            vkGetPhysicalDeviceProperties(gpu, &mut gpu_props);
+        }
+
+        // Call with null data to get count
+        let mut queue_count = 0u32;
+        unsafe {
+            vkGetPhysicalDeviceQueueFamilyProperties(
+                gpu, &mut queue_count, null_mut());
+        }
+        assert!(queue_count >= 1);
+        let mut queue_props = Vec::with_capacity(queue_count as usize);
+        unsafe {
+            vkGetPhysicalDeviceQueueFamilyProperties(
+                gpu, &mut queue_count, queue_props.as_mut_ptr());
+            queue_props.set_len(queue_count as usize);
+        }
+        // Find a queue that supports gfx
+        let mut gfx_queue_found = false;
+        for prop in queue_props {
+            if 0 != (prop.queueFlags & (Enum_VkQueueFlagBits::VK_QUEUE_GRAPHICS_BIT as u32)) {
+                gfx_queue_found = true;
+                break;
+            }
+        }
+        // Query fine-grained feature support for this device.
+        //   If app has specific feature requirements then it should check
+        //   supported features based on this query.
+        let mut physDevFeatures: VkPhysicalDeviceFeatures = unsafe { std::mem::uninitialized() };
+        unsafe {
+            vkGetPhysicalDeviceFeatures(gpu, &mut physDevFeatures);
         }
 
         unimplemented!(); // TODO: keep working

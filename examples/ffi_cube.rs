@@ -11,8 +11,6 @@ use std::mem;
 use std::ptr::{null, null_mut};
 use std::raw::Repr;
 use cgmath::*;
-use xcb::base as xcbb;
-use xcb::xproto as xcbx;
 
 use vulkan::ffi::vulkan::*;
 use vulkan::ffi::vk_ext_debug_report::*;
@@ -27,8 +25,6 @@ fn vkassert(result: VkResult) {
 
 fn main() {
     let mut demo = Demo::init(std::env::args());
-    demo.create_window();
-    demo.init_vk_swapchain();
 
     demo.prepare();
     demo.run();
@@ -39,8 +35,6 @@ fn main() {
 struct Demo<'a> {
     cfg: DemoConfig,
     prepared: bool,
-    width: i32,
-    height: i32,
     projection_matrix: Matrix4<f32>,
     view_matrix: Matrix4<f32>,
     model_matrix: Matrix4<f32>,
@@ -61,7 +55,6 @@ struct DemoVk {
     inst:                                      VkInstance,
     gpu:                                       VkPhysicalDevice,
     device:                                    VkDevice,
-    graphics_queue_node_index:                 u32,
     gpu_props:                                 VkPhysicalDeviceProperties,
     queue_props:                               Vec<VkQueueFamilyProperties>, // queue_count
 
@@ -81,6 +74,7 @@ struct DemoVkSwapchain {
     memory_properties:                         VkPhysicalDeviceMemoryProperties,
     color_space:                               VkColorSpaceKHR,
 
+    graphics_queue_node_index:                 u32,
     format:                                    VkFormat,
     swapchain:                                 VkSwapchainKHR,
     buffers:                                   Vec<SwapchainBuffers>, // swapchainImageCount
@@ -112,6 +106,12 @@ struct DemoVkSwapchain {
     DestroyDebugReportCallback:                PFN_vkDestroyDebugReportCallbackEXT,
     msg_callback:                              VkDebugReportCallbackEXT,
     DebugReportMessage:                        PFN_vkDebugReportMessageEXT,
+}
+
+impl DemoVkSwapchain {
+    fn new() -> Self {
+        unimplemented!();
+    }
 }
 
 impl DemoVk {
@@ -345,12 +345,16 @@ impl DemoVk {
         let fpGetPhysicalDeviceSurfacePresentModesKHR = unsafe { mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfacePresentModesKHR>(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfacePresentModes)KHR"))) };
         let fpGetSwapchainImagesKHR                   = unsafe { mem::transmute::<_, PFN_vkGetSwapchainImagesKHR                  >(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetSwapchainImagesKHR"))                   ) };
 
+        let demo_swapchain = DemoVkSwapchain::new();
+        let graphics_queue_node_index = demo_swapchain.graphics_queue_node_index;
+
         DemoVk {
-            demo_swapchain: unsafe { mem::uninitialized() },
+            demo_swapchain: demo_swapchain,
             inst: inst,
             gpu: gpu,
-            device: unsafe { mem::uninitialized() },
-            graphics_queue_node_index: std::u32::MAX,
+            device: create_device(cfg, gpu, graphics_queue_node_index,
+                                  &device_validation_layers,
+                                  &extension_names),
             gpu_props: gpu_props,
             queue_props: queue_props,
             extension_names: extension_names,
@@ -430,18 +434,22 @@ struct DemoConfig {
     use_break: bool,
     validate: bool,
     frameCount: i32,
+    width: u16,
+    height: u16,
 }
 
 struct DemoWindowing<'a> {
-    connection:            Box<xcbb::Connection>,
-    screen:                xcbx::Screen<'a>,
-    window:                Option<xcbx::Window>,
-    atom_wm_delete_window: Option<Box<xcbx::InternAtomReply>>,
+    connection:            Box<xcb::base::Connection>,
+    screen:                xcb::xproto::Screen<'a>,
+    window:                xcb::xproto::Window,
+    atom_wm_delete_window: xcb::xproto::InternAtomReply,
 }
 
 impl<'a> DemoWindowing<'a> {
-    fn new() -> Self {
-        let (connection, screen_num) = xcbb::Connection::connect();
+    fn new(cfg: &DemoConfig) -> Self {
+        use xcb::base::*;
+        use xcb::xproto::*;
+        let (connection, screen_num) = Connection::connect();
         let screen = {
             let setup = connection.get_setup();
             let screen = setup.roots().nth(screen_num as usize).unwrap();
@@ -449,15 +457,49 @@ impl<'a> DemoWindowing<'a> {
                 // Ignore the lifetimes on screen. I don't know why I have to
                 // do this, precisely, but I'm having trouble with the lifetime
                 // bounds in rust-xcb.
-                mem::transmute::<xcbx::Screen, xcbx::Screen>(screen)
+                mem::transmute::<Screen, Screen>(screen)
             }
         };
+
+        let window = connection.generate_id();
+        let value_mask = CW_BACK_PIXEL | CW_EVENT_MASK;
+        let value_list = vec![
+            (screen.black_pixel(), EVENT_MASK_KEY_RELEASE | EVENT_MASK_EXPOSURE | EVENT_MASK_STRUCTURE_NOTIFY),
+        ];
+
+        create_window(&connection,
+                      COPY_FROM_PARENT as u8,
+                      window, screen.root(),
+                      0, 0, cfg.width, cfg.height, 0,
+                      WINDOW_CLASS_INPUT_OUTPUT as u16,
+                      screen.root_visual(),
+                      &value_list);
+
+        // Magic code that will send notification when window is destroyed
+        let cookie = intern_atom(&connection, true, "WM_PROTOCOLS");
+        let reply = cookie.get_reply().unwrap();
+
+        let cookie2 = intern_atom(&connection, false, "WM_DELETE_WINDOW");
+        let atom_wm_delete_window = cookie2.get_reply().unwrap();
+
+        change_property(&connection,
+                        PROP_MODE_REPLACE as u8,
+                        window,
+                        reply.atom(), 4, 32,
+                        unsafe { mem::transmute::<&u32, &[u8; 4]>(&atom_wm_delete_window.atom()) });
+
+        map_window(&connection, window);
+
+        // Force the x/y coordinates to 100,100 results are identical in
+        // consecutive runs
+        let coords = [(CONFIG_WINDOW_X as u16, 100), (CONFIG_WINDOW_Y as u16, 100)];
+        configure_window(&connection, window, &coords);
 
         DemoWindowing {
             connection: box connection,
             screen: screen,
-            window: None,
-            atom_wm_delete_window: None,
+            window: window,
+            atom_wm_delete_window: atom_wm_delete_window,
         }
     }
 }
@@ -468,6 +510,8 @@ impl DemoConfig {
         use_break: false,
         validate: false,
         frameCount: std::i32::MAX,
+        width: 500,
+        height: 500,
     } }
 }
 
@@ -500,7 +544,7 @@ impl<'a> Demo<'a> {
             }
         }
 
-        let windowing = DemoWindowing::new();
+        let windowing = DemoWindowing::new(&cfg);
 
         let vk = DemoVk::new(&cfg);
 
@@ -515,53 +559,67 @@ impl<'a> Demo<'a> {
             prepared: false,
             current_buffer: 0,
             pause: false,
-            width: 500,
-            height: 500,
             spin_angle: 0.01,
             spin_increment: 0.01,
             quit: false,
         }
-
-        //cfg.width = 500;
-        //cfg.height = 500;
-
-        //cfg.spin_angle = 0.01;
-        //cfg.spin_increment = 0.01;
-        //cfg.pause = false;
-
-
-        //{ // init_connection
-        //    // TODO: init_connection
-        //}
-        //{ // init_vk
-        //    // TODO: init_vk
-        //}
-
-        //Demo {
-        //    cfg: cfg,
-        //    windowing: windowing,
-        //    surface: surface,
-        //    prepared: true,
-
-        //    inst: inst,
-        //    gpu: gpu,
-        //    device: device,
-
-        //}
-    }
-
-    fn create_window(&mut self) {
-    }
-
-    fn init_vk_swapchain(&mut self) {
     }
 
     fn prepare(&mut self) {
+        unimplemented!();
     }
 
     fn run(&mut self) {
+        unimplemented!();
     }
 }
+
+fn create_device(cfg: &DemoConfig,
+                 gpu: VkPhysicalDevice,
+                 graphics_queue_node_index: u32,
+                 device_validation_layers: &Vec<&'static str>,
+                 enabled_extensions: &Vec<&'static str>) -> VkDevice {
+    let queue_priorities = [0.0f32];
+    let queue = VkDeviceQueueCreateInfo {
+        sType: Enum_VkStructureType::VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        pNext: null(),
+        queueFamilyIndex: graphics_queue_node_index,
+        queueCount: 1,
+        pQueuePriorities: &queue_priorities as *const f32,
+        flags: 0,
+    };
+
+    let device = VkDeviceCreateInfo {
+        sType: Enum_VkStructureType::VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        pNext: null(),
+        queueCreateInfoCount: 1,
+        pQueueCreateInfos: &queue,
+        enabledLayerCount:
+            if cfg.validate {
+                device_validation_layers.len() as u32
+            } else {
+                0
+            },
+        ppEnabledLayerNames:
+            if cfg.validate {
+                vec_str_to_vec_ptr(device_validation_layers).as_ptr()
+            } else {
+                null()
+            },
+            enabledExtensionCount: enabled_extensions.len() as u32,
+            ppEnabledExtensionNames: vec_str_to_vec_ptr(enabled_extensions).as_ptr(),
+            // If specific features are required, pass them in here:
+            pEnabledFeatures: null(),
+            flags: 0,
+    };
+
+    unsafe {
+        let mut ret = mem::uninitialized();
+        vkassert(vkCreateDevice(gpu, &device, null(), &mut ret));
+        ret
+    }
+}
+
 
 impl<'a> Drop for Demo<'a> {
     fn drop(&mut self) {

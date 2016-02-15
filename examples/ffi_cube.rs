@@ -56,31 +56,36 @@ struct Demo<'a> {
 }
 
 struct DemoVk {
-    surface:                                   VkSurfaceKHR,
+    demo_swapchain:                            DemoVkSwapchain,
     inst:                                      VkInstance,
     gpu:                                       VkPhysicalDevice,
     device:                                    VkDevice,
-    queue:                                     VkQueue,
     graphics_queue_node_index:                 u32,
     gpu_props:                                 VkPhysicalDeviceProperties,
     queue_props:                               Vec<VkQueueFamilyProperties>, // queue_count
-    memory_properties:                         VkPhysicalDeviceMemoryProperties,
 
     extension_names:                           Vec<&'static str>,
     device_validation_layers:                  Vec<&'static str>,
 
-    format:                                    VkFormat,
+    fpGetPhysicalDeviceSurfaceSupportKHR:      PFN_vkGetPhysicalDeviceSurfaceSupportKHR,
+    fpGetPhysicalDeviceSurfaceCapabilitiesKHR: PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
+    fpGetPhysicalDeviceSurfaceFormatsKHR:      PFN_vkGetPhysicalDeviceSurfaceFormatsKHR,
+    fpGetPhysicalDeviceSurfacePresentModesKHR: PFN_vkGetPhysicalDeviceSurfacePresentModesKHR,
+    fpGetSwapchainImagesKHR:                   PFN_vkGetSwapchainImagesKHR,
+}
+
+struct DemoVkSwapchain {
+    surface:                                   VkSurfaceKHR,
+    queue:                                     VkQueue,
+    memory_properties:                         VkPhysicalDeviceMemoryProperties,
     color_space:                               VkColorSpaceKHR,
 
+    format:                                    VkFormat,
     swapchain:                                 VkSwapchainKHR,
     buffers:                                   Vec<SwapchainBuffers>, // swapchainImageCount
-
     cmd_pool:                                  VkCommandPool,
-
     depth:                                     Depth,
-
     textures:                                  [TextureObject; DEMO_TEXTURE_COUNT],
-
     uniform_data:                              UniformData,
 
     cmd:                                       VkCommandBuffer,
@@ -98,13 +103,8 @@ struct DemoVk {
 
     framebuffers:                              Vec<VkFramebuffer>,
 
-    fpGetPhysicalDeviceSurfaceSupportKHR:      PFN_vkGetPhysicalDeviceSurfaceSupportKHR,
-    fpGetPhysicalDeviceSurfaceCapabilitiesKHR: PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
-    fpGetPhysicalDeviceSurfaceFormatsKHR:      PFN_vkGetPhysicalDeviceSurfaceFormatsKHR,
-    fpGetPhysicalDeviceSurfacePresentModesKHR: PFN_vkGetPhysicalDeviceSurfacePresentModesKHR,
     fpCreateSwapchainKHR:                      PFN_vkCreateSwapchainKHR,
     fpDestroySwapchainKHR:                     PFN_vkDestroySwapchainKHR,
-    fpGetSwapchainImagesKHR:                   PFN_vkGetSwapchainImagesKHR,
     fpAcquireNextImageKHR:                     PFN_vkAcquireNextImageKHR,
     fpQueuePresentKHR:                         PFN_vkQueuePresentKHR,
     CreateDebugReportCallback:                 PFN_vkCreateDebugReportCallbackEXT,
@@ -146,7 +146,6 @@ impl DemoVk {
                 &mut instance_layer_count, null_mut())
         });
 
-        let mut enabled_layer_count = 0;
         if instance_layer_count > 0 {
             let mut instance_layers: Vec<VkLayerProperties> =
                 Vec::with_capacity(instance_layer_count as usize);
@@ -159,7 +158,6 @@ impl DemoVk {
             if cfg.validate {
                 assert!(Self::check_layers(
                     &device_validation_layers, &instance_layers));
-                enabled_layer_count = device_validation_layers.len();
             }
         }
 
@@ -202,9 +200,9 @@ impl DemoVk {
         let app = VkApplicationInfo {
             sType: Enum_VkStructureType::VK_STRUCTURE_TYPE_APPLICATION_INFO,
             pNext: null(),
-            pApplicationName: APP_SHORT_NAME.repr().data as *const i8,
+            pApplicationName: str_to_ptr(APP_SHORT_NAME),
             applicationVersion: 0,
-            pEngineName: APP_SHORT_NAME.repr().data as *const i8,
+            pEngineName: str_to_ptr(APP_SHORT_NAME),
             engineVersion: 0,
             apiVersion: VK_API_VERSION,
         };
@@ -215,12 +213,18 @@ impl DemoVk {
             sType: Enum_VkStructureType::VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             pNext: null(),
             pApplicationInfo: &app,
-            enabledLayerCount: instance_validation_layers.len() as u32,
-            ppEnabledLayerNames: if cfg.validate {
-                instance_validation_layers.as_ptr()
-            } else {
-                null()
-            },
+            enabledLayerCount:
+                if cfg.validate {
+                    instance_validation_layers.len() as u32
+                } else {
+                    0
+                },
+            ppEnabledLayerNames:
+                if cfg.validate {
+                    instance_validation_layers.as_ptr()
+                } else {
+                    null() // FIXME: apparently this causes a crash.
+                },
             enabledExtensionCount: extension_names.len() as u32,
             ppEnabledExtensionNames: extension_names.as_ptr(),
             flags: 0,
@@ -250,7 +254,6 @@ impl DemoVk {
         };
 
         // Look for validation layers
-        enabled_layer_count = 0;
         let mut device_layer_count = 0u32;
         unsafe {
             vkassert(vkEnumerateDeviceLayerProperties(gpu, &mut device_layer_count, null_mut()));
@@ -265,7 +268,6 @@ impl DemoVk {
 
             if cfg.validate {
                 assert!(Self::check_layers(&device_validation_layers, &device_layers));
-                enabled_layer_count = device_validation_layers.len();
             }
         }
 
@@ -321,12 +323,13 @@ impl DemoVk {
         }
         // Find a queue that supports gfx
         let mut gfx_queue_found = false;
-        for prop in queue_props {
+        for prop in &queue_props {
             if 0 != (prop.queueFlags & (Enum_VkQueueFlagBits::VK_QUEUE_GRAPHICS_BIT as u32)) {
                 gfx_queue_found = true;
                 break;
             }
         }
+        assert!(gfx_queue_found);
         // Query fine-grained feature support for this device.
         //   If app has specific feature requirements then it should check
         //   supported features based on this query.
@@ -335,7 +338,28 @@ impl DemoVk {
             vkGetPhysicalDeviceFeatures(gpu, &mut physDevFeatures);
         }
 
-        unimplemented!(); // TODO: keep working
+        let fpGetPhysicalDeviceSurfaceSupportKHR      = unsafe { std::mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceSupportKHR     >(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceSupportKHR"))      ) };
+        let fpGetPhysicalDeviceSurfaceCapabilitiesKHR = unsafe { std::mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceCapabilities)KHR"))) };
+        let fpGetPhysicalDeviceSurfaceFormatsKHR      = unsafe { std::mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceFormatsKHR     >(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceFormatsKHR"))      ) };
+        let fpGetPhysicalDeviceSurfacePresentModesKHR = unsafe { std::mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfacePresentModesKHR>(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfacePresentModes)KHR"))) };
+        let fpGetSwapchainImagesKHR                   = unsafe { std::mem::transmute::<_, PFN_vkGetSwapchainImagesKHR                  >(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetSwapchainImagesKHR"))                   ) };
+
+        DemoVk {
+            demo_swapchain: unsafe { std::mem::uninitialized() },
+            inst: inst,
+            gpu: gpu,
+            device: unsafe { std::mem::uninitialized() },
+            graphics_queue_node_index: std::u32::MAX,
+            gpu_props: gpu_props,
+            queue_props: queue_props,
+            extension_names: extension_names,
+            device_validation_layers: device_validation_layers,
+            fpGetPhysicalDeviceSurfaceSupportKHR:      fpGetPhysicalDeviceSurfaceSupportKHR,
+            fpGetPhysicalDeviceSurfaceCapabilitiesKHR: fpGetPhysicalDeviceSurfaceCapabilitiesKHR,
+            fpGetPhysicalDeviceSurfaceFormatsKHR:      fpGetPhysicalDeviceSurfaceFormatsKHR,
+            fpGetPhysicalDeviceSurfacePresentModesKHR: fpGetPhysicalDeviceSurfacePresentModesKHR,
+            fpGetSwapchainImagesKHR:                   fpGetSwapchainImagesKHR,
+        }
     }
 
     /// Return true if all layer names specified in check_names
@@ -358,6 +382,10 @@ fn cstr_eq_str(s: *const i8, t: &str) -> bool {
 
 fn carr_eq_str(s: &[i8; 256], t: &str) -> bool {
     cstr_eq_str(&*s as *const i8, t)
+}
+
+fn str_to_ptr(s: &'static str) -> *const i8 {
+    s.repr().data as *const i8
 }
 
 fn vec_str_to_vec_ptr(v: &Vec<&'static str>) -> Vec<*const i8> {
@@ -474,6 +502,8 @@ impl<'a> Demo<'a> {
         }
 
         let windowing = DemoWindowing::new();
+
+        let demo_vk = DemoVk::new(&cfg);
 
         //cfg.width = 500;
         //cfg.height = 500;

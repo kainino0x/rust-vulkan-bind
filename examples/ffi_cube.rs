@@ -19,10 +19,6 @@ const DEMO_TEXTURE_COUNT: usize = 1;
 const APP_SHORT_NAME: &'static str = "cube";
 const APP_LONG_NAME: &'static str = "The Vulkan Cube Demo Program";
 
-fn vkassert(result: VkResult) {
-    assert_eq!(result, Enum_VkResult::VK_SUCCESS);
-}
-
 fn main() {
     let mut demo = Demo::init(std::env::args());
 
@@ -30,6 +26,26 @@ fn main() {
     demo.run();
 
     mem::forget(demo); // FIXME: shouldn't need this, eventually
+}
+
+fn vkassert(result: VkResult) {
+    assert_eq!(result, Enum_VkResult::VK_SUCCESS);
+}
+
+fn cstr_eq_str(s: *const i8, t: &str) -> bool {
+    unsafe { ffi::CStr::from_ptr(s) }.to_str().unwrap() == t
+}
+
+fn carr_eq_str(s: &[i8; 256], t: &str) -> bool {
+    cstr_eq_str(&*s as *const i8, t)
+}
+
+fn str_to_ptr(s: &'static str) -> *const i8 {
+    s.repr().data as *const i8
+}
+
+fn vec_str_to_vec_ptr(v: &Vec<&'static str>) -> Vec<*const i8> {
+    v.iter().map(|s| s.repr().data as *const i8).collect()
 }
 
 struct Demo<'a> {
@@ -51,70 +67,208 @@ struct Demo<'a> {
 }
 
 struct DemoVk {
-    demo_swapchain:                            DemoVkSwapchain,
-    inst:                                      VkInstance,
-    gpu:                                       VkPhysicalDevice,
-    device:                                    VkDevice,
-    gpu_props:                                 VkPhysicalDeviceProperties,
-    queue_props:                               Vec<VkQueueFamilyProperties>, // queue_count
+    demo_swapchain: DemoVkSwapchainPre,
+    demo_vk_base:   DemoVkBase,
+}
 
-    extension_names:                           Vec<&'static str>,
-    device_validation_layers:                  Vec<&'static str>,
+impl DemoVk {
+    fn new(cfg: &DemoConfig, windowing: &DemoWindowing) -> Self {
+        let mut base = DemoVkBase::new(cfg);
+        let sc = DemoVkSwapchainPre::new(cfg, &mut base, windowing);
 
+        DemoVk {
+            demo_vk_base: base,
+            demo_swapchain: sc,
+        }
+    }
+}
+
+struct DemoVkBase {
+    inst:                     VkInstance,
+    gpu:                      VkPhysicalDevice,
+    gpu_props:                VkPhysicalDeviceProperties,
+    queue_props:              Vec<VkQueueFamilyProperties>, // queue_count
+    extension_names:          Vec<&'static str>,
+    device_validation_layers: Vec<&'static str>,
+    fns:                      DemoFns,
+}
+
+struct DemoFns {
     fpGetPhysicalDeviceSurfaceSupportKHR:      PFN_vkGetPhysicalDeviceSurfaceSupportKHR,
     fpGetPhysicalDeviceSurfaceCapabilitiesKHR: PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
     fpGetPhysicalDeviceSurfaceFormatsKHR:      PFN_vkGetPhysicalDeviceSurfaceFormatsKHR,
     fpGetPhysicalDeviceSurfacePresentModesKHR: PFN_vkGetPhysicalDeviceSurfacePresentModesKHR,
     fpGetSwapchainImagesKHR:                   PFN_vkGetSwapchainImagesKHR,
-}
-
-struct DemoVkSwapchain {
-    surface:                                   VkSurfaceKHR,
-    queue:                                     VkQueue,
-    memory_properties:                         VkPhysicalDeviceMemoryProperties,
-    color_space:                               VkColorSpaceKHR,
-
-    graphics_queue_node_index:                 u32,
-    format:                                    VkFormat,
-    swapchain:                                 VkSwapchainKHR,
-    buffers:                                   Vec<SwapchainBuffers>, // swapchainImageCount
-    cmd_pool:                                  VkCommandPool,
-    depth:                                     Depth,
-    textures:                                  [TextureObject; DEMO_TEXTURE_COUNT],
-    uniform_data:                              UniformData,
-
-    cmd:                                       VkCommandBuffer,
-    pipeline_layout:                           VkPipelineLayout,
-    desc_layout:                               VkDescriptorSetLayout,
-    pipelineCache:                             VkPipelineCache,
-    render_pass:                               VkRenderPass,
-    pipeline:                                  VkPipeline,
-
-    vert_shader_module:                        VkShaderModule,
-    frag_shader_module:                        VkShaderModule,
-
-    desc_pool:                                 VkDescriptorPool,
-    desc_set:                                  VkDescriptorSet,
-
-    framebuffers:                              Vec<VkFramebuffer>,
 
     fpCreateSwapchainKHR:                      PFN_vkCreateSwapchainKHR,
     fpDestroySwapchainKHR:                     PFN_vkDestroySwapchainKHR,
     fpAcquireNextImageKHR:                     PFN_vkAcquireNextImageKHR,
     fpQueuePresentKHR:                         PFN_vkQueuePresentKHR,
+
     CreateDebugReportCallback:                 PFN_vkCreateDebugReportCallbackEXT,
     DestroyDebugReportCallback:                PFN_vkDestroyDebugReportCallbackEXT,
     msg_callback:                              VkDebugReportCallbackEXT,
     DebugReportMessage:                        PFN_vkDebugReportMessageEXT,
 }
 
-impl DemoVkSwapchain {
-    fn new() -> Self {
-        unimplemented!();
+struct DemoVkSwapchainPre {
+    surface:                   VkSurfaceKHR,
+    device:                    VkDevice,
+    queue:                     VkQueue,
+    memory_properties:         VkPhysicalDeviceMemoryProperties,
+    color_space:               VkColorSpaceKHR,
+
+    graphics_queue_node_index: u32,
+    format:                    VkFormat,
+}
+
+struct DemoVkSwapchainPrepared {
+    swapchain:                 VkSwapchainKHR,
+    buffers:                   Vec<SwapchainBuffers>, // swapchainImageCount
+    cmd_pool:                  VkCommandPool,
+    depth:                     Depth,
+    textures:                  [TextureObject; DEMO_TEXTURE_COUNT],
+    uniform_data:              UniformData,
+
+    cmd:                       VkCommandBuffer,
+    pipeline_layout:           VkPipelineLayout,
+    desc_layout:               VkDescriptorSetLayout,
+    pipelineCache:             VkPipelineCache,
+    render_pass:               VkRenderPass,
+    pipeline:                  VkPipeline,
+
+    vert_shader_module:        VkShaderModule,
+    frag_shader_module:        VkShaderModule,
+
+    desc_pool:                 VkDescriptorPool,
+    desc_set:                  VkDescriptorSet,
+
+    framebuffers:              Vec<VkFramebuffer>,
+}
+
+impl DemoVkSwapchainPre {
+    fn new(cfg: &DemoConfig,
+           base: &mut DemoVkBase,
+           windowing: &DemoWindowing) -> Self {
+        let createInfo = VkXcbSurfaceCreateInfoKHR {
+            sType: Enum_VkStructureType::VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR,
+            pNext: null(),
+            flags: 0,
+            connection: unsafe { windowing.connection.get_raw_conn() },
+            window: windowing.window,
+        };
+
+        let surface = unsafe {
+            let mut surface = mem::uninitialized();
+            vkassert(vkCreateXcbSurfaceKHR(base.inst, &createInfo, null(), &mut surface));
+            surface
+        };
+
+        // Iterate over each queue to learn whether it supports presenting:
+        let mut supports_present = vec![0u32; base.queue_props.len()];
+        for (i, sp) in supports_present.iter_mut().enumerate() {
+            unsafe {
+                base.fns.fpGetPhysicalDeviceSurfaceSupportKHR.unwrap()(
+                    base.gpu, i as u32, surface, sp);
+            }
+        }
+
+        let mut graphicsQueueNodeIndex = None;
+        let mut presentQueueNodeIndex = None;
+        // Search for a graphics and a present queue in the array of queue
+        // families, try to find one that supports both
+        for (i, qp) in base.queue_props.iter().enumerate() {
+            if qp.queueFlags & (Enum_VkQueueFlagBits::VK_QUEUE_GRAPHICS_BIT as u32) != 0 {
+                if let None = graphicsQueueNodeIndex {
+                    graphicsQueueNodeIndex = Some(i as u32);
+                }
+                if supports_present[i] == 1 {
+                    graphicsQueueNodeIndex = Some(i as u32);
+                    presentQueueNodeIndex = Some(i as u32);
+                    break;
+                }
+            }
+        }
+        if let None = presentQueueNodeIndex {
+            // If didn't find a queue that supports both graphics and present,
+            // then find a separate present queue.
+            for i in 0..base.queue_props.len() {
+                if supports_present[i] == 1 {
+                    presentQueueNodeIndex = Some(i as u32);
+                    break;
+                }
+            }
+        }
+        // Generate error if could not find both a graphics and a present queue
+        let graphicsQueueNodeIndex = graphicsQueueNodeIndex.unwrap();
+        let presentQueueNodeIndex  = presentQueueNodeIndex .unwrap();
+
+        // TODO: Add support for separate queues, including presentation,
+        //       synchronization, and appropriate tracking for QueueSubmit.
+        // NOTE: While it is possible for an application to use a separate
+        //       graphics and a present queues, this demo program assumes it is
+        //       only using one:
+        if graphicsQueueNodeIndex != presentQueueNodeIndex {
+            panic!("Could not find a common graphics-and-present queue");
+        }
+
+        let device = create_device(cfg, base, graphicsQueueNodeIndex);
+
+        let gdpa = unsafe { mem::transmute::<_, PFN_vkGetDeviceProcAddr>(vkGetInstanceProcAddr(base.inst, str_to_ptr("vkGetDeviceProcAddr"))) }.unwrap();
+
+        base.fns.fpCreateSwapchainKHR    = unsafe { mem::transmute::<_, PFN_vkCreateSwapchainKHR   >(gdpa(device, str_to_ptr("vkCreateSwapchainKHR"   ))) };
+        base.fns.fpDestroySwapchainKHR   = unsafe { mem::transmute::<_, PFN_vkDestroySwapchainKHR  >(gdpa(device, str_to_ptr("vkDestroySwapchainKHR"  ))) };
+        base.fns.fpGetSwapchainImagesKHR = unsafe { mem::transmute::<_, PFN_vkGetSwapchainImagesKHR>(gdpa(device, str_to_ptr("vkGetSwapchainImagesKHR"))) };
+        base.fns.fpAcquireNextImageKHR   = unsafe { mem::transmute::<_, PFN_vkAcquireNextImageKHR  >(gdpa(device, str_to_ptr("vkAcquireNextImageKHR"  ))) };
+        base.fns.fpQueuePresentKHR       = unsafe { mem::transmute::<_, PFN_vkQueuePresentKHR      >(gdpa(device, str_to_ptr("vkQueuePresentKHR"      ))) };
+
+        let mut queue = unsafe { mem::uninitialized() };
+        unsafe { vkGetDeviceQueue(device, graphicsQueueNodeIndex, 0, &mut queue) };
+
+        // Get the lits of `VkFormat`s that are supported:
+        let mut formatCount = 0u32;
+        unsafe {
+            vkassert(base.fns.fpGetPhysicalDeviceSurfaceFormatsKHR.unwrap()(base.gpu, surface, &mut formatCount, null_mut()));
+        }
+
+        let mut surfFormats = Vec::with_capacity(formatCount as usize);
+        unsafe {
+            vkassert(base.fns.fpGetPhysicalDeviceSurfaceFormatsKHR.unwrap()(base.gpu, surface, &mut formatCount, surfFormats.as_mut_ptr()));
+            surfFormats.set_len(formatCount as usize);
+        }
+
+        // If the format list includes just one entry of VK_FORMAT_UNDEFINED,
+        // the surface has no preferred format. Otherwise, at least one
+        // supported format will be returned.
+        let format =
+            if formatCount == 1 &&
+                surfFormats[0].format == Enum_VkFormat::VK_FORMAT_UNDEFINED {
+                Enum_VkFormat::VK_FORMAT_B8G8R8A8_UNORM
+            } else {
+                assert!(formatCount >= 1);
+                surfFormats[0].format
+            };
+        let color_space = surfFormats[0].colorSpace;
+
+        let memory_properties = unsafe {
+            let mut mp = mem::uninitialized();
+            vkGetPhysicalDeviceMemoryProperties(base.gpu, &mut mp);
+            mp
+        };
+
+        DemoVkSwapchainPre {
+            surface: surface,
+            device: device,
+            queue: queue,
+            memory_properties: memory_properties,
+            color_space: color_space,
+            graphics_queue_node_index: graphicsQueueNodeIndex,
+            format: format,
+        }
     }
 }
 
-impl DemoVk {
+impl DemoVkBase {
     fn new(cfg: &DemoConfig) -> Self {
         let instance_validation_layers = vec![
             "VK_LAYER_LUNARG_threading",
@@ -339,31 +493,33 @@ impl DemoVk {
             vkGetPhysicalDeviceFeatures(gpu, &mut physDevFeatures);
         }
 
-        let fpGetPhysicalDeviceSurfaceSupportKHR      = unsafe { mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceSupportKHR     >(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceSupportKHR"))      ) };
-        let fpGetPhysicalDeviceSurfaceCapabilitiesKHR = unsafe { mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceCapabilities)KHR"))) };
-        let fpGetPhysicalDeviceSurfaceFormatsKHR      = unsafe { mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceFormatsKHR     >(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceFormatsKHR"))      ) };
-        let fpGetPhysicalDeviceSurfacePresentModesKHR = unsafe { mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfacePresentModesKHR>(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetPhysicalDeviceSurfacePresentModes)KHR"))) };
-        let fpGetSwapchainImagesKHR                   = unsafe { mem::transmute::<_, PFN_vkGetSwapchainImagesKHR                  >(vkGetInstanceProcAddr(inst, str_to_ptr("fpGetSwapchainImagesKHR"))                   ) };
+        let gipa = vkGetInstanceProcAddr;
+        let fns = DemoFns {
+            fpGetPhysicalDeviceSurfaceSupportKHR     : unsafe { mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceSupportKHR     >(gipa(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceSupportKHR"     ))) },
+            fpGetPhysicalDeviceSurfaceCapabilitiesKHR: unsafe { mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>(gipa(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceCapabilitiesKHR"))) },
+            fpGetPhysicalDeviceSurfaceFormatsKHR     : unsafe { mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfaceFormatsKHR     >(gipa(inst, str_to_ptr("fpGetPhysicalDeviceSurfaceFormatsKHR"     ))) },
+            fpGetPhysicalDeviceSurfacePresentModesKHR: unsafe { mem::transmute::<_, PFN_vkGetPhysicalDeviceSurfacePresentModesKHR>(gipa(inst, str_to_ptr("fpGetPhysicalDeviceSurfacePresentModesKHR"))) },
+            fpGetSwapchainImagesKHR                  : unsafe { mem::transmute::<_, PFN_vkGetSwapchainImagesKHR                  >(gipa(inst, str_to_ptr("fpGetSwapchainImagesKHR"                  ))) },
 
-        let demo_swapchain = DemoVkSwapchain::new();
-        let graphics_queue_node_index = demo_swapchain.graphics_queue_node_index;
+            fpCreateSwapchainKHR:       None,
+            fpDestroySwapchainKHR:      None,
+            fpAcquireNextImageKHR:      None,
+            fpQueuePresentKHR:          None,
 
-        DemoVk {
-            demo_swapchain: demo_swapchain,
+            CreateDebugReportCallback:  None,
+            DestroyDebugReportCallback: None,
+            msg_callback:               null_mut(),
+            DebugReportMessage:         None,
+        };
+
+        DemoVkBase {
             inst: inst,
             gpu: gpu,
-            device: create_device(cfg, gpu, graphics_queue_node_index,
-                                  &device_validation_layers,
-                                  &extension_names),
             gpu_props: gpu_props,
             queue_props: queue_props,
             extension_names: extension_names,
             device_validation_layers: device_validation_layers,
-            fpGetPhysicalDeviceSurfaceSupportKHR:      fpGetPhysicalDeviceSurfaceSupportKHR,
-            fpGetPhysicalDeviceSurfaceCapabilitiesKHR: fpGetPhysicalDeviceSurfaceCapabilitiesKHR,
-            fpGetPhysicalDeviceSurfaceFormatsKHR:      fpGetPhysicalDeviceSurfaceFormatsKHR,
-            fpGetPhysicalDeviceSurfacePresentModesKHR: fpGetPhysicalDeviceSurfacePresentModesKHR,
-            fpGetSwapchainImagesKHR:                   fpGetSwapchainImagesKHR,
+            fns: fns,
         }
     }
 
@@ -379,22 +535,6 @@ impl DemoVk {
         }
         true
     }
-}
-
-fn cstr_eq_str(s: *const i8, t: &str) -> bool {
-    unsafe { ffi::CStr::from_ptr(s) }.to_str().unwrap() == t
-}
-
-fn carr_eq_str(s: &[i8; 256], t: &str) -> bool {
-    cstr_eq_str(&*s as *const i8, t)
-}
-
-fn str_to_ptr(s: &'static str) -> *const i8 {
-    s.repr().data as *const i8
-}
-
-fn vec_str_to_vec_ptr(v: &Vec<&'static str>) -> Vec<*const i8> {
-    v.iter().map(|s| s.repr().data as *const i8).collect()
 }
 
 struct Depth {
@@ -439,7 +579,7 @@ struct DemoConfig {
 }
 
 struct DemoWindowing<'a> {
-    connection:            Box<xcb::base::Connection>,
+    connection:            xcb::base::Connection,
     screen:                xcb::xproto::Screen<'a>,
     window:                xcb::xproto::Window,
     atom_wm_delete_window: xcb::xproto::InternAtomReply,
@@ -496,7 +636,7 @@ impl<'a> DemoWindowing<'a> {
         configure_window(&connection, window, &coords);
 
         DemoWindowing {
-            connection: box connection,
+            connection: connection,
             screen: screen,
             window: window,
             atom_wm_delete_window: atom_wm_delete_window,
@@ -546,7 +686,7 @@ impl<'a> Demo<'a> {
 
         let windowing = DemoWindowing::new(&cfg);
 
-        let vk = DemoVk::new(&cfg);
+        let vk = DemoVk::new(&cfg, &windowing);
 
         Demo {
             cfg: cfg,
@@ -575,10 +715,8 @@ impl<'a> Demo<'a> {
 }
 
 fn create_device(cfg: &DemoConfig,
-                 gpu: VkPhysicalDevice,
-                 graphics_queue_node_index: u32,
-                 device_validation_layers: &Vec<&'static str>,
-                 enabled_extensions: &Vec<&'static str>) -> VkDevice {
+                 base: &DemoVkBase,
+                 graphics_queue_node_index: u32) -> VkDevice {
     let queue_priorities = [0.0f32];
     let queue = VkDeviceQueueCreateInfo {
         sType: Enum_VkStructureType::VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -596,18 +734,18 @@ fn create_device(cfg: &DemoConfig,
         pQueueCreateInfos: &queue,
         enabledLayerCount:
             if cfg.validate {
-                device_validation_layers.len() as u32
+                base.device_validation_layers.len() as u32
             } else {
                 0
             },
         ppEnabledLayerNames:
             if cfg.validate {
-                vec_str_to_vec_ptr(device_validation_layers).as_ptr()
+                vec_str_to_vec_ptr(&base.device_validation_layers).as_ptr()
             } else {
                 null()
             },
-            enabledExtensionCount: enabled_extensions.len() as u32,
-            ppEnabledExtensionNames: vec_str_to_vec_ptr(enabled_extensions).as_ptr(),
+            enabledExtensionCount: base.extension_names.len() as u32,
+            ppEnabledExtensionNames: vec_str_to_vec_ptr(&base.extension_names).as_ptr(),
             // If specific features are required, pass them in here:
             pEnabledFeatures: null(),
             flags: 0,
@@ -615,7 +753,7 @@ fn create_device(cfg: &DemoConfig,
 
     unsafe {
         let mut ret = mem::uninitialized();
-        vkassert(vkCreateDevice(gpu, &device, null(), &mut ret));
+        vkassert(vkCreateDevice(base.gpu, &device, null(), &mut ret));
         ret
     }
 }

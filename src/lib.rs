@@ -1,3 +1,5 @@
+#![feature(associated_consts)]
+
 extern crate libc;
 extern crate xcb;
 

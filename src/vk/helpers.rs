@@ -2,7 +2,7 @@
 macro_rules! decl_enum {
     ($name:ident) => {
         #[derive(Clone, Eq, PartialEq, Debug)]
-        pub struct $name(i32);
+        pub struct $name(pub i32);
     }
 }
 
@@ -11,7 +11,7 @@ macro_rules! impl_enum {
     ($name:ident; $($variant:ident = $value:expr,)*) => {
         #[allow(non_upper_case_globals)]
         impl $name {
-            $(pub const $variant: i32 = $value;)*
+            $(pub const $variant: $name = $name($value);)*
         }
     }
 }

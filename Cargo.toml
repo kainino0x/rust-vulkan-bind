@@ -1,11 +1,11 @@
 [package]
-name = "vulkan"
+name = "vulkan-bind"
 description = "Vulkan bindings for Rust"
 version = "0.1.0"
 authors = ["Kai Ninomiya <kainino1@gmail.com>"]
 license = "Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/kainino0x/rust-vulkan"
+repository = "https://github.com/kainino0x/rust-vulkan-bind"
 
 [dependencies]
 libc = "0.2"

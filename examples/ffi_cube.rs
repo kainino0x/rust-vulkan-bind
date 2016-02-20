@@ -3,7 +3,7 @@
 #![feature(box_syntax, raw)]
 
 extern crate cgmath;
-extern crate vulkan;
+extern crate vulkan_bind;
 extern crate xcb;
 
 use std::ffi;
@@ -12,8 +12,8 @@ use std::ptr::{null, null_mut};
 use std::raw::Repr;
 use cgmath::*;
 
-use vulkan::ffi::vulkan::*;
-use vulkan::ffi::vk_ext_debug_report::*;
+use vulkan_bind::ffi::vulkan::*;
+use vulkan_bind::ffi::vk_ext_debug_report::*;
 
 const DEMO_TEXTURE_COUNT: usize = 1;
 const APP_SHORT_NAME: &'static str = "cube";

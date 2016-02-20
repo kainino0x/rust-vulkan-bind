@@ -1,9 +1,9 @@
 #![feature(raw)]
 
-extern crate vulkan;
+extern crate vulkan_bind;
 
 fn main() {
-    use vulkan::ffi::vulkan::*;
+    use vulkan_bind::ffi::vulkan::*;
     use std::ptr::null;
     use std::raw::Repr;
 

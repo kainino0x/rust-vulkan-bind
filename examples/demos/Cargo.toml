@@ -1,0 +1,11 @@
+[package]
+name = "vulkan-bind-demos"
+version = "0.1.0"
+authors = ["Kai Ninomiya <kainino1@gmail.com>"]
+
+[dependencies]
+cgmath = "0.7.0"
+
+[dependencies.vulkan-bind]
+version = "*"
+path = "../.."

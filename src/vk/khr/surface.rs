@@ -1,0 +1,35 @@
+use vk::*;
+
+pub const SPEC_VERSION: u32 = 25;
+pub const EXTENSION_NAME: &'static str = "VK_KHR_surface";
+
+impl_enum!{Result;
+    ERROR_SURFACE_LOST = -1000000000,
+    ERROR_NATIVE_WINDOW_IN_USE = -1000000001,
+}
+make_flag!{SurfaceTransformFlags;
+    IDENTITY = 0x00000001,
+    ROTATE_90 = 0x00000002,
+    ROTATE_180 = 0x00000004,
+    ROTATE_270 = 0x00000008,
+    HORIZONTAL_MIRROR = 0x00000010,
+    HORIZONTAL_MIRROR_ROTATE_90 = 0x00000020,
+    HORIZONTAL_MIRROR_ROTATE_180 = 0x00000040,
+    HORIZONTAL_MIRROR_ROTATE_270 = 0x00000080,
+    INHERIT = 0x00000100,
+}
+make_flag!{CompositeAlphaFlags;
+    OPAQUE = 0x00000001,
+    PRE_MULTIPLIED = 0x00000002,
+    POST_MULTIPLIED = 0x00000004,
+    INHERIT = 0x00000008,
+}
+make_enum!{ColorSpace;
+    SRGB_NONLINEAR = 0,
+}
+make_enum!{PresentMode;
+    IMMEDIATE = 0,
+    MAILBOX = 1,
+    FIFO = 2,
+    FIFO_RELAXED = 3,
+}

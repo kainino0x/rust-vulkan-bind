@@ -322,6 +322,7 @@ make_enum!{ComponentSwizzle;
     B = 5,
     A = 6,
 }
+enum_defl!{ComponentSwizzle::IDENTITY}
 make_enum!{VertexInputRate;
     VERTEX = 0,
     INSTANCE = 1,
@@ -358,6 +359,7 @@ make_enum!{CompareOp;
     GREATER_OR_EQUAL = 6,
     ALWAYS = 7,
 }
+enum_defl!{CompareOp::NEVER}
 make_enum!{StencilOp;
     KEEP = 0,
     ZERO = 1,
@@ -368,6 +370,7 @@ make_enum!{StencilOp;
     INCREMENT_AND_WRAP = 6,
     DECREMENT_AND_WRAP = 7,
 }
+enum_defl!{StencilOp::KEEP}
 make_enum!{LogicOp;
     CLEAR = 0,
     AND = 1,

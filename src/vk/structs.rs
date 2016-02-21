@@ -100,14 +100,14 @@ pub struct FormatProperties {
     pub bufferFeatures: FormatFeatureFlags,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Extent3D {
     pub width: u32,
     pub height: u32,
     pub depth: u32,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct ImageFormatProperties {
     pub maxExtent: Extent3D,
     pub maxMipLevels: u32,
@@ -395,14 +395,14 @@ pub struct SparseImageOpaqueMemoryBindInfo {
     pub pBinds: *const SparseMemoryBind,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct ImageSubresource {
     pub aspectMask: ImageAspectFlags,
     pub mipLevel: u32,
     pub arrayLayer: u32,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Offset3D {
     pub x: i32,
     pub y: i32,
@@ -521,7 +521,7 @@ pub struct SubresourceLayout {
     pub depthPitch: DeviceSize,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct ComponentMapping {
     pub r: ComponentSwizzle,
     pub g: ComponentSwizzle,
@@ -529,7 +529,7 @@ pub struct ComponentMapping {
     pub a: ComponentSwizzle,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct ImageSubresourceRange {
     pub aspectMask: ImageAspectFlags,
     pub baseMipLevel: u32,
@@ -582,6 +582,7 @@ pub struct SpecializationInfo {
     pub pData: *const ::std::os::raw::c_void,
 }
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct PipelineShaderStageCreateInfo {
     pub sType: StructureType,
     pub pNext: *const ::std::os::raw::c_void,
@@ -645,19 +646,19 @@ pub struct Viewport {
     pub maxDepth: ::std::os::raw::c_float,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Offset2D {
     pub x: i32,
     pub y: i32,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Extent2D {
     pub width: u32,
     pub height: u32,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Rect2D {
     pub offset: Offset2D,
     pub extent: Extent2D,
@@ -704,7 +705,7 @@ pub struct PipelineMultisampleStateCreateInfo {
     pub alphaToOneEnable: Bool32,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct StencilOpState {
     pub failOp: StencilOp,
     pub passOp: StencilOp,
@@ -856,7 +857,7 @@ pub struct DescriptorSetLayoutCreateInfo {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct DescriptorPoolSize {
-    pub _type: DescriptorType,
+    pub typ: DescriptorType,
     pub descriptorCount: u32,
 }
 #[repr(C)]
@@ -1026,7 +1027,7 @@ pub struct BufferCopy {
     pub size: DeviceSize,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct ImageSubresourceLayers {
     pub aspectMask: ImageAspectFlags,
     pub mipLevel: u32,
@@ -1034,7 +1035,7 @@ pub struct ImageSubresourceLayers {
     pub layerCount: u32,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct ImageCopy {
     pub srcSubresource: ImageSubresourceLayers,
     pub srcOffset: Offset3D,
@@ -1043,7 +1044,7 @@ pub struct ImageCopy {
     pub extent: Extent3D,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct ImageBlit {
     pub srcSubresource: ImageSubresourceLayers,
     pub srcOffsets: [Offset3D; 2usize],
@@ -1081,7 +1082,7 @@ pub struct ClearRect {
     pub layerCount: u32,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct ImageResolve {
     pub srcSubresource: ImageSubresourceLayers,
     pub srcOffset: Offset3D,

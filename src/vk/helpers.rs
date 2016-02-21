@@ -5,10 +5,6 @@ macro_rules! decl_enum {
         #[repr(C)]
         #[derive(Copy, Clone, Eq, PartialEq, Debug)]
         pub struct $name(pub i32);
-
-        impl ::std::default::Default for $name {
-            fn default() -> Self { $name(0) }
-        }
     }
 }
 
@@ -27,6 +23,15 @@ macro_rules! make_enum {
     ($name:ident; $($variant:ident = $value:expr,)*) => {
         decl_enum!{$name}
         impl_enum!{$name; $($variant = $value,)*}
+    }
+}
+
+#[macro_export]
+macro_rules! enum_defl {
+    ($name:ident :: $variant:ident) => {
+        impl ::std::default::Default for $name {
+            fn default() -> Self { $name::$variant }
+        }
     }
 }
 

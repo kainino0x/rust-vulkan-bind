@@ -4,28 +4,35 @@ pub type SampleMask = u32;
 
 // Opaque structs
 
-pub enum Instance { }
-pub enum PhysicalDevice { }
-pub enum Device { }
-pub enum Queue { }
-pub enum Semaphore { }
-pub enum CommandBuffer { }
-pub enum Fence { }
-pub enum DeviceMemory { }
-pub enum Buffer { }
-pub enum Image { }
-pub enum Event { }
-pub enum QueryPool { }
-pub enum BufferView { }
-pub enum ImageView { }
-pub enum ShaderModule { }
-pub enum PipelineCache { }
-pub enum PipelineLayout { }
-pub enum RenderPass { }
-pub enum Pipeline { }
-pub enum DescriptorSetLayout { }
-pub enum Sampler { }
-pub enum DescriptorPool { }
-pub enum DescriptorSet { }
-pub enum Framebuffer { }
-pub enum CommandPool { }
+macro_rules! opaque {
+    ($name_t: ident, $name:ident) => {
+        pub enum $name_t { }
+        pub type $name = *mut $name_t;
+    }
+}
+
+opaque!{_Instance, Instance}
+opaque!{_PhysicalDevice, PhysicalDevice}
+opaque!{_Device, Device}
+opaque!{_Queue, Queue}
+opaque!{_Semaphore, Semaphore}
+opaque!{_CommandBuffer, CommandBuffer}
+opaque!{_Fence, Fence}
+opaque!{_DeviceMemory, DeviceMemory}
+opaque!{_Buffer, Buffer}
+opaque!{_Image, Image}
+opaque!{_Event, Event}
+opaque!{_QueryPool, QueryPool}
+opaque!{_BufferView, BufferView}
+opaque!{_ImageView, ImageView}
+opaque!{_ShaderModule, ShaderModule}
+opaque!{_PipelineCache, PipelineCache}
+opaque!{_PipelineLayout, PipelineLayout}
+opaque!{_RenderPass, RenderPass}
+opaque!{_Pipeline, Pipeline}
+opaque!{_DescriptorSetLayout, DescriptorSetLayout}
+opaque!{_Sampler, Sampler}
+opaque!{_DescriptorPool, DescriptorPool}
+opaque!{_DescriptorSet, DescriptorSet}
+opaque!{_Framebuffer, Framebuffer}
+opaque!{_CommandPool, CommandPool}

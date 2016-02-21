@@ -1,6 +1,8 @@
 #![cfg(target_os = "linux")]
 #![cfg(feature = "mir_surface")]
 
+use vk::*;
+
 pub const SPEC_VERISON: u32 = 4;
 pub const EXTENSION_NAME: &'static str = "VK_KHR_mir_surface";
 

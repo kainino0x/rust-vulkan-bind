@@ -7,7 +7,7 @@ impl_enum!{Result;
     ERROR_VALIDATION_FAILED = -1000011001,
 }
 impl_enum!{StructureType;
-    STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO = 1000011000,
+    DEBUG_REPORT_CREATE_INFO = 1000011000,
 }
 make_enum!{ObjectType;
     UNKNOWN = 0,
@@ -44,7 +44,7 @@ make_enum!{Error;
     NONE = 0,
     CALLBACK_REF = 1,
 }
-make_flag!{Flags;
+make_flag!{Flag; Flags;
     INFO = 0x00000001,
     WARN = 0x00000002,
     PERF_WARN = 0x00000004,

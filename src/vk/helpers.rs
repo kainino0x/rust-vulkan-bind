@@ -72,6 +72,13 @@ macro_rules! make_flag {
         decl_flag!{$flag}
         decl_flag!{$flags}
         impl_enum!{$flag; $($variant = $value,)*}
+
+        impl ::std::convert::From<$flag> for $flags {
+            fn from(other: $flag) -> Self {
+                $flags(other.0)
+            }
+        }
+
         impl_bitwise!{$flag, $flag, $flags}
         impl_bitwise!{$flag, $flags, $flags}
         impl_bitwise!{$flags, $flag, $flags}

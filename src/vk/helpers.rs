@@ -84,6 +84,10 @@ macro_rules! make_flag {
             }
         }
 
+        impl ::std::convert::Into<bool> for $flags {
+            fn into(self) -> bool { self.0 != 0 }
+        }
+
         impl_bitwise!{$flag, $flag, $flags}
         impl_bitwise!{$flag, $flags, $flags}
         impl_bitwise!{$flags, $flag, $flags}

@@ -93,7 +93,7 @@ pub struct PhysicalDeviceFeatures {
     pub inheritedQueries: Bool32,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct FormatProperties {
     pub linearTilingFeatures: FormatFeatureFlags,
     pub optimalTilingFeatures: FormatFeatureFlags,

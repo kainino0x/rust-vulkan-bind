@@ -5,11 +5,10 @@ Vulkan bindings for Rust.
 **This project is a WIP and completely unstable!**
 
 Working:
-* FFI bindings - will change.
-  * I'm experimenting with rewriting them in a more modular format.
+* FFI bindings - in flux.
 
 In progress:
-* ~~Cube demo~~ On hold while working on bindings.
+* Triangle demo from SaschaWillems/Vulkan.
 
 ### Usage
 

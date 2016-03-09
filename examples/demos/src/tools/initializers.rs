@@ -124,14 +124,14 @@ pub fn samplerCreateInfo() -> vk::SamplerCreateInfo {
         addressModeV: vk::SamplerAddressMode::REPEAT,
         addressModeW: vk::SamplerAddressMode::REPEAT,
         mipLodBias: 0.0,
-        anisotropyEnable: 0,
+        anisotropyEnable: vk::Bool32::False,
         maxAnisotropy: 0.0,
-        compareEnable: 0,
+        compareEnable: vk::Bool32::False,
         compareOp: vk::CompareOp::NEVER,
         minLod: 0.0,
         maxLod: 0.0,
         borderColor: vk::BorderColor::FLOAT_TRANSPARENT_BLACK,
-        unnormalizedCoordinates: 0,
+        unnormalizedCoordinates: vk::Bool32::False,
     }
 }
 
@@ -402,11 +402,11 @@ pub fn pipelineRasterizationStateCreateInfo(polygonMode: vk::PolygonMode,
         cullMode: cullMode,
         frontFace: frontFace,
         flags: flags,
-        depthClampEnable: 1,
+        depthClampEnable: vk::Bool32::True,
         // Fields that were omitted in C++:
         pNext: null(),
-        rasterizerDiscardEnable: 0,
-        depthBiasEnable: 0,
+        rasterizerDiscardEnable: vk::Bool32::False,
+        depthBiasEnable: vk::Bool32::False,
         depthBiasConstantFactor: 0.0,
         depthBiasClamp: 0.0,
         depthBiasSlopeFactor: 0.0,
@@ -438,7 +438,7 @@ pub fn pipelineColorBlendStateCreateInfo(attachments: &[vk::PipelineColorBlendAt
         pAttachments: attachments.as_ptr(),
         // Fields that were omitted in C++:
         flags: df(),
-        logicOpEnable: 0,
+        logicOpEnable: vk::Bool32::False,
         logicOp: vk::LogicOp::CLEAR,
         blendConstants: [0.0; 4],
     }
@@ -457,8 +457,8 @@ pub fn pipelineDepthStencilStateCreateInfo(depthTestEnable: vk::Bool32, depthWri
         // Fields that were omitted in C++:
         pNext: null(),
         flags: df(),
-        depthBoundsTestEnable: 0,
-        stencilTestEnable: 0,
+        depthBoundsTestEnable: vk::Bool32::False,
+        stencilTestEnable: vk::Bool32::False,
         minDepthBounds: 0.0,
         maxDepthBounds: 0.0,
     }
@@ -488,11 +488,11 @@ pub fn pipelineMultisampleStateCreateInfo(rasterizationSamples: vk::SampleCountF
         // Fields that were omitted in C++:
         pNext: null(),
         flags: flags,
-        sampleShadingEnable: 0,
+        sampleShadingEnable: vk::Bool32::False,
         minSampleShading: 0.0,
         pSampleMask: null(),
-        alphaToCoverageEnable: 0,
-        alphaToOneEnable: 0,
+        alphaToCoverageEnable: vk::Bool32::False,
+        alphaToOneEnable: vk::Bool32::False,
     }
 }
 

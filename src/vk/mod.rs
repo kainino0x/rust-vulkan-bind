@@ -20,3 +20,7 @@ pub use self::structs::*;
 pub use self::unions::*;
 pub use self::fns::*;
 pub use self::pfns::*;
+
+pub fn make_version(major: u32, minor: u32, patch: u32) -> u32 {
+    (major << 22) | (minor << 12) | patch
+}

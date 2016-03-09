@@ -1,6 +1,6 @@
 use std;
 
-pub const API_VERSION:                   u32 = (1 << 22) | (0 << 12) | (2);
+pub const API_VERSION:                   u32 = (1 << 22) | (0 << 12) | (4);
 
 pub const LOD_CLAMP_NONE:                f32 = 1000.0;
 pub const REMAINING_MIP_LEVELS:          u32 = std::u32::MAX;

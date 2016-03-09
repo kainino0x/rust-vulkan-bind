@@ -1,6 +1,15 @@
-pub type Bool32 = u32;
 pub type DeviceSize = u64;
 pub type SampleMask = u32;
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+#[repr(u32)]
+pub enum Bool32 {
+    False = 0,
+    True = 1,
+}
+
+pub const FALSE: Bool32 = Bool32::False;
+pub const TRUE: Bool32 = Bool32::True;
 
 // Opaque structs
 

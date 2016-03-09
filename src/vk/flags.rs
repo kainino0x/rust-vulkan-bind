@@ -182,8 +182,8 @@ make_flag!{DependencyFlag; DependencyFlags;
     BY_REGION = 0x00000001,
 }
 make_flag!{CommandPoolCreateFlag; CommandPoolCreateFlags;
-    CREATE_TRANSIENT = 0x00000001,
-    CREATE_RESET_COMMAND_BUFFER = 0x00000002,
+    TRANSIENT = 0x00000001,
+    RESET_COMMAND_BUFFER = 0x00000002,
 }
 make_flag!{CommandPoolResetFlag; CommandPoolResetFlags;
     RELEASE_RESOURCES = 0x00000001,

@@ -5,6 +5,7 @@ authors = ["Kai Ninomiya <kainino1@gmail.com>"]
 
 [dependencies]
 cgmath = "0.7.0"
+xcb = "0.6.2"
 
 [dependencies.vulkan-bind]
 version = "*"

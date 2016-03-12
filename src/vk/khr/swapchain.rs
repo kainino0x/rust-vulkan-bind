@@ -1,4 +1,5 @@
 use vk::*;
+use libc::*;
 
 pub const SPEC_VERSION: u32 = 67;
 pub const EXTENSION_NAME: &'static str = "VK_KHR_swapchain";
@@ -16,7 +17,7 @@ impl_enum!{ImageLayout;
 }
 make_flag!{CreateFlag; CreateFlags; }
 
-pub enum Swapchain { }
+opaque!{_Swapchain, Swapchain}
 
 #[repr(C)]
 pub struct CreateInfo {
@@ -62,13 +63,13 @@ pub type PFN_vkDestroySwapchain =
     ::std::option::Option<unsafe extern "C" fn(device: Device,
                                                swapchain: Swapchain,
                                                pAllocator: *const AllocationCallbacks)>;
-pub type PFN_vkGetSwapchainImagesKHR =
+pub type PFN_vkGetSwapchainImages =
     ::std::option::Option<unsafe extern "C" fn(device: Device,
                                                swapchain: Swapchain,
                                                pSwapchainImageCount: *mut u32,
                                                pSwapchainImages: *mut Image)
                               -> Result>;
-pub type PFN_vkAcquireNextImageKHR =
+pub type PFN_vkAcquireNextImage =
     ::std::option::Option<unsafe extern "C" fn(device: Device,
                                                swapchain: Swapchain,
                                                timeout: u64,
@@ -76,7 +77,26 @@ pub type PFN_vkAcquireNextImageKHR =
                                                fence: Fence,
                                                pImageIndex: *mut u32)
                               -> Result>;
-pub type PFN_vkQueuePresentKHR =
+pub type PFN_vkQueuePresent =
     ::std::option::Option<unsafe extern "C" fn(queue: Queue,
                                                pPresentInfo: *const PresentInfo)
                               -> Result>;
+
+#[link(name = "vulkan")]
+extern "C" {
+    pub fn vkCreateSwapchain(device: Device,
+                             pCreateInfo: *const khr::swapchain::CreateInfo,
+                             pAllocator: *const AllocationCallbacks,
+                             pSwapchain: *mut khr::swapchain::Swapchain) -> Result;
+    pub fn vkDestroySwapchain(device: Device, swapchain: khr::swapchain::Swapchain,
+                              pAllocator: *const AllocationCallbacks);
+    pub fn vkGetSwapchainImages(device: Device,
+                                swapchain: khr::swapchain::Swapchain,
+                                pSwapchainImageCount: *mut uint32_t,
+                                pSwapchainImages: *mut Image) -> Result;
+    pub fn vkAcquireNextImage(device: Device, swapchain: khr::Swapchain,
+                              timeout: uint64_t, semaphore: Semaphore,
+                              fence: Fence, pImageIndex: *mut uint32_t) -> Result;
+    pub fn vkQueuePresent(queue: Queue,
+                          pPresentInfo: *const khr::swapchain::PresentInfo) -> Result;
+}

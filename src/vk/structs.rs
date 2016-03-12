@@ -521,12 +521,22 @@ pub struct SubresourceLayout {
     pub depthPitch: DeviceSize,
 }
 #[repr(C)]
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone)]
 pub struct ComponentMapping {
     pub r: ComponentSwizzle,
     pub g: ComponentSwizzle,
     pub b: ComponentSwizzle,
     pub a: ComponentSwizzle,
+}
+impl Default for ComponentMapping {
+    fn default() -> Self {
+        ComponentMapping {
+            r: ComponentSwizzle::R,
+            g: ComponentSwizzle::G,
+            b: ComponentSwizzle::B,
+            a: ComponentSwizzle::A,
+        }
+    }
 }
 #[repr(C)]
 #[derive(Copy, Clone, Default)]
@@ -652,7 +662,7 @@ pub struct Offset2D {
     pub y: i32,
 }
 #[repr(C)]
-#[derive(Copy, Clone, Default)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct Extent2D {
     pub width: u32,
     pub height: u32,
@@ -1156,13 +1166,4 @@ pub struct DrawIndirectCommand {
     pub instanceCount: u32,
     pub firstVertex: u32,
     pub firstInstance: u32,
-}
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct DisplayPresentInfoKHR {
-    pub sType: StructureType,
-    pub pNext: *const ::std::os::raw::c_void,
-    pub srcRect: Rect2D,
-    pub dstRect: Rect2D,
-    pub persistent: Bool32,
 }

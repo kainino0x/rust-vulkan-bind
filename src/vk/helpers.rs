@@ -94,3 +94,11 @@ macro_rules! make_flag {
         impl_bitwise!{$flags, $flags, $flags}
     }
 }
+
+#[macro_export]
+macro_rules! opaque {
+    ($name_t: ident, $name:ident) => {
+        pub enum $name_t { }
+        pub type $name = *mut $name_t;
+    }
+}

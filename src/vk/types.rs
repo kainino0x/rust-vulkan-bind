@@ -13,13 +13,6 @@ pub const TRUE: Bool32 = Bool32::True;
 
 // Opaque structs
 
-macro_rules! opaque {
-    ($name_t: ident, $name:ident) => {
-        pub enum $name_t { }
-        pub type $name = *mut $name_t;
-    }
-}
-
 opaque!{_Instance, Instance}
 opaque!{_PhysicalDevice, PhysicalDevice}
 opaque!{_Device, Device}

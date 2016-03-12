@@ -450,41 +450,4 @@ extern "C" {
     pub fn vkCmdExecuteCommands(commandBuffer: CommandBuffer,
                                 commandBufferCount: uint32_t,
                                 pCommandBuffers: *const CommandBuffer);
-    pub fn vkDestroySurfaceKHR(instance: Instance, surface: khr::surface::Surface,
-                               pAllocator: *const AllocationCallbacks);
-    pub fn vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice: PhysicalDevice,
-                                                queueFamilyIndex: uint32_t,
-                                                surface: khr::surface::Surface,
-                                                pSupported: *mut Bool32) -> Result;
-    pub fn vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice: PhysicalDevice,
-                                                     surface: khr::surface::Surface,
-                                                     pSurfaceCapabilities: *mut khr::surface::Capabilities) -> Result;
-    pub fn vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice: PhysicalDevice,
-                                                surface: khr::surface::Surface,
-                                                pSurfaceFormatCount: *mut uint32_t,
-                                                pSurfaceFormats: *mut khr::surface::Format) -> Result;
-    pub fn vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice: PhysicalDevice,
-                                                     surface: khr::surface::Surface,
-                                                     pPresentModeCount: *mut uint32_t,
-                                                     pPresentModes: *mut khr::surface::PresentMode) -> Result;
-    pub fn vkCreateSwapchainKHR(device: Device,
-                                pCreateInfo: *const khr::swapchain::CreateInfo,
-                                pAllocator: *const AllocationCallbacks,
-                                pSwapchain: *mut khr::swapchain::Swapchain) -> Result;
-    pub fn vkDestroySwapchainKHR(device: Device, swapchain: khr::swapchain::Swapchain,
-                                 pAllocator: *const AllocationCallbacks);
-    pub fn vkGetSwapchainImagesKHR(device: Device,
-                                   swapchain: khr::swapchain::Swapchain,
-                                   pSwapchainImageCount: *mut uint32_t,
-                                   pSwapchainImages: *mut Image) -> Result;
-    pub fn vkAcquireNextImageKHR(device: Device, swapchain: khr::swapchain::Swapchain,
-                                 timeout: uint64_t, semaphore: Semaphore,
-                                 fence: Fence, pImageIndex: *mut uint32_t) -> Result;
-    pub fn vkQueuePresentKHR(queue: Queue,
-                             pPresentInfo: *const khr::swapchain::PresentInfo) -> Result;
-    pub fn vkCreateSharedSwapchainsKHR(device: Device,
-                                       swapchainCount: uint32_t,
-                                       pCreateInfos: *const khr::swapchain::CreateInfo,
-                                       pAllocator: *const AllocationCallbacks,
-                                       pSwapchains: *mut khr::swapchain::Swapchain) -> Result;
 }

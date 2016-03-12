@@ -1,4 +1,5 @@
 use vk::*;
+use libc::*;
 
 pub const SPEC_VERSION: u32 = 25;
 pub const EXTENSION_NAME: &'static str = "VK_KHR_surface";
@@ -34,10 +35,10 @@ make_enum!{PresentMode;
     FIFO_RELAXED = 3,
 }
 
-pub enum Surface { }
+opaque!{_Surface, Surface}
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct Capabilities {
     pub minImageCount: u32,
     pub maxImageCount: u32,
@@ -57,30 +58,51 @@ pub struct Format {
     pub colorSpace: ColorSpace,
 }
 
-pub type PFN_vkDestroySurfaceKHR =
+pub type PFN_vkDestroySurface =
     ::std::option::Option<unsafe extern "C" fn(instance: Instance,
                                                surface: Surface,
                                                pAllocator: *const AllocationCallbacks)>;
-pub type PFN_vkGetPhysicalDeviceSurfaceSupportKHR =
+pub type PFN_vkGetPhysicalDeviceSurfaceSupport =
     ::std::option::Option<unsafe extern "C" fn(physicalDevice: PhysicalDevice,
                                                queueFamilyIndex: u32,
                                                surface: Surface,
                                                pSupported: *mut Bool32)
                               -> Result>;
-pub type PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR =
+pub type PFN_vkGetPhysicalDeviceSurfaceCapabilities =
     ::std::option::Option<unsafe extern "C" fn(physicalDevice: PhysicalDevice,
                                                surface: Surface,
                                                pSurfaceCapabilities: *mut khr::surface::Capabilities)
                               -> Result>;
-pub type PFN_vkGetPhysicalDeviceSurfaceFormatsKHR =
+pub type PFN_vkGetPhysicalDeviceSurfaceFormats =
     ::std::option::Option<unsafe extern "C" fn(physicalDevice: PhysicalDevice,
                                                surface: Surface,
                                                pSurfaceFormatCount: *mut u32,
                                                pSurfaceFormats: *mut khr::surface::Format)
                               -> Result>;
-pub type PFN_vkGetPhysicalDeviceSurfacePresentModesKHR =
+pub type PFN_vkGetPhysicalDeviceSurfacePresentModes =
     ::std::option::Option<unsafe extern "C" fn(physicalDevice: PhysicalDevice,
                                                surface: Surface,
                                                pPresentModeCount: *mut u32,
                                                pPresentModes: *mut khr::surface::PresentMode)
                               -> Result>;
+
+#[link(name = "vulkan")]
+extern "C" {
+    pub fn vkDestroySurface(instance: Instance, surface: khr::Surface,
+                            pAllocator: *const AllocationCallbacks);
+    pub fn vkGetPhysicalDeviceSurfaceSupport(physicalDevice: PhysicalDevice,
+                                             queueFamilyIndex: uint32_t,
+                                             surface: khr::Surface,
+                                             pSupported: *mut Bool32) -> Result;
+    pub fn vkGetPhysicalDeviceSurfaceCapabilities(physicalDevice: PhysicalDevice,
+                                                  surface: khr::surface::Surface,
+                                                  pSurfaceCapabilities: *mut khr::surface::Capabilities) -> Result;
+    pub fn vkGetPhysicalDeviceSurfaceFormats(physicalDevice: PhysicalDevice,
+                                             surface: khr::surface::Surface,
+                                             pSurfaceFormatCount: *mut uint32_t,
+                                             pSurfaceFormats: *mut khr::surface::Format) -> Result;
+    pub fn vkGetPhysicalDeviceSurfacePresentModes(physicalDevice: PhysicalDevice,
+                                                  surface: khr::Surface,
+                                                  pPresentModeCount: *mut uint32_t,
+                                                  pPresentModes: *mut khr::surface::PresentMode) -> Result;
+}

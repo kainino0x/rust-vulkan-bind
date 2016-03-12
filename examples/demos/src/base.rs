@@ -5,53 +5,20 @@ use std::mem;
 use std::os::raw::c_void;
 use std::ptr::{null, null_mut};
 
-use vulkan_bind::vk;
 use xcb::ffi::base::*;
 use xcb::ffi::xproto::*;
 use cgmath::{Vector2, Vector3};
+use vulkan_bind::vk;
 
 use tools;
-
-pub struct Swapchain {
-    queue_node_index: u32,
-    // TODO
-}
-
-impl Swapchain {
-    fn new(instance: vk::Instance,
-           physical_device: vk::PhysicalDevice,
-           device: vk::Device) -> Self{
-        unimplemented!()
-    }
-}
-
-pub struct TextureLoader; // TODO
+use swapchain::*;
+use textureloader::*;
+use util::*;
 
 pub struct DepthStencil {
     pub image: vk::Image,
     pub mem:   vk::DeviceMemory,
     pub view:  vk::ImageView,
-}
-
-fn vkrq(res: vk::Result, msg: &str) {
-    if res != vk::Result::SUCCESS {
-        println!("Fatal: {}: {:?}", msg, res);
-        ::std::process::exit(1);
-    }
-}
-
-fn vkrqr<T>(res: Result<T, vk::Result>, msg: &str) {
-    if let Err(e) = res {
-        vkrq(e, msg);
-    }
-}
-
-fn vkassert(res: vk::Result) -> Result<(), vk::Result> {
-    if res == vk::Result::SUCCESS { Ok(()) } else { Err(res) }
-}
-
-macro_rules! vktry {
-    ( $res:expr ) => { try!(vkassert($res)) }
 }
 
 #[derive(Default)]
@@ -255,7 +222,8 @@ impl ExampleBase {
         let depth_format = tools::get_supported_depth_format(physical_device).unwrap();
 
         self.swapchain = Some(Swapchain::new(self.instance.unwrap(),
-                                             physical_device, self.device.unwrap()));
+                                             physical_device, self.device.unwrap(),
+                                             self.connection.unwrap(), self.window.unwrap()));
     }
 
     fn setup_window(&mut self) -> xcb_window_t {
@@ -274,6 +242,7 @@ impl ExampleBase {
             scr -= 1;
         }
 
+        self.connection = Some(connection);
         self.screen = Some(iter.data);
     }
 
@@ -290,7 +259,7 @@ impl ExampleBase {
     fn create_command_pool(&mut self) {
         let cmd_pool_info = vk::CommandPoolCreateInfo {
             sType: vk::StructureType::COMMAND_POOL_CREATE_INFO,
-            queueFamilyIndex: self.swapchain.unwrap().queue_node_index,
+            queueFamilyIndex: self.swapchain.as_ref().unwrap().queue_node_index,
             flags: vk::CommandPoolCreateFlag::RESET_COMMAND_BUFFER.into(),
             pNext: null(),
         };
@@ -355,7 +324,19 @@ impl ExampleBase {
     }
 
     fn prepare(&mut self) {
-        unimplemented!()
+        self.create_command_pool();
+        self.create_setup_command_buffer();
+        self.setup_swapchain();
+        self.create_command_buffers();
+        self.setup_depth_stencil();
+        self.setup_render_pass();
+        self.create_pipeline_cache();
+        self.setup_framebuffer();
+        self.flush_setup_command_buffer();
+        self.create_setup_command_buffer();
+        self.texture_loader = Some(Box::new(::textureloader::TextureLoader::new(
+            self.physical_device.unwrap(), self.device.unwrap(),
+            self.queue.unwrap(), self.cmd_pool.unwrap())));
     }
 
     fn load_shader(&mut self, filename: &str,

@@ -4,6 +4,7 @@
 use std::mem;
 use std::os::raw::c_void;
 use std::ptr::{null, null_mut};
+use std::ffi::CString;
 
 use xcb::ffi::base::*;
 use xcb::ffi::xproto::*;
@@ -83,7 +84,7 @@ impl ExampleBase {
         self.enable_validation = enable_validation;
         self.title = Some(String::from("Vulkan Example"));
         self.name = Some(String::from("vulkanExample"));
-        let name_cstr = self.name.as_ref().unwrap().as_ptr() as *const i8;
+        let name_cstr = cstr(self.name.as_ref().unwrap());
 
         let app_info = vk::ApplicationInfo {
             sType: vk::StructureType::APPLICATION_INFO,
@@ -96,8 +97,8 @@ impl ExampleBase {
         };
 
         let mut enabled_extensions = vec![
-            vk::khr::surface::EXTENSION_NAME.as_ptr() as *const i8,
-            vk::khr::xcb_surface::EXTENSION_NAME.as_ptr() as *const i8,
+            cstr(vk::khr::surface::EXTENSION_NAME),
+            cstr(vk::khr::xcb_surface::EXTENSION_NAME),
         ];
 
         // TODO: validation
@@ -126,7 +127,7 @@ impl ExampleBase {
     pub fn create_device(&mut self, requested_queues: vk::DeviceQueueCreateInfo,
                          enable_validation: bool) -> Result<(), vk::Result> {
         let enabled_extensions = vec![
-            vk::khr::swapchain::EXTENSION_NAME.as_ptr() as *const i8,
+            cstr(vk::khr::swapchain::EXTENSION_NAME),
         ];
 
         let device_create_info = vk::DeviceCreateInfo {
@@ -226,8 +227,60 @@ impl ExampleBase {
                                              self.connection.unwrap(), self.window.unwrap()));
     }
 
+    /// Linux: setup window
+    /// TODO (upstream): Not finished...
     fn setup_window(&mut self) -> xcb_window_t {
-        unimplemented!()
+        let connection = self.connection.unwrap();
+        let screen = self.screen.unwrap();
+
+        let window = unsafe { xcb_generate_id(self.connection.unwrap()) };
+        self.window = Some(window);
+        let value_mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
+        let mut value_list = [0u32; 32];
+        value_list[0] = unsafe { &*screen }.black_pixel;
+        value_list[1] = XCB_EVENT_MASK_KEY_RELEASE
+                      | XCB_EVENT_MASK_EXPOSURE
+                      | XCB_EVENT_MASK_STRUCTURE_NOTIFY
+                      | XCB_EVENT_MASK_POINTER_MOTION
+                      | XCB_EVENT_MASK_BUTTON_PRESS
+                      | XCB_EVENT_MASK_BUTTON_RELEASE;
+        unsafe {
+            xcb_create_window(connection,
+                              XCB_COPY_FROM_PARENT as u8,
+                              window,
+                              (*screen).root,
+                              0, 0, self.width as u16, self.height as u16, 0,
+                              XCB_WINDOW_CLASS_INPUT_OUTPUT as u16,
+                              (*screen).root_visual,
+                              value_mask, value_list.as_ptr());
+        }
+
+        let cookie = unsafe { xcb_intern_atom(connection, 1, 12, cstr("WM_PROTOCOLS")) };
+        let reply = unsafe { xcb_intern_atom_reply(connection, cookie, null_mut()) };
+        let cookie2 = unsafe { xcb_intern_atom(connection, 0, 16, cstr("WM_DELETE_WINDOW")) };
+
+        let awdw = unsafe { *xcb_intern_atom_reply(connection, cookie2, null_mut()) };
+        self.atom_wm_delete_window = Some(awdw);
+
+        unsafe {
+            let reply = *reply;
+            let title = self.title.as_ref().unwrap();
+
+            xcb_change_property(connection, XCB_PROP_MODE_REPLACE as u8,
+                                window, reply.atom, 4, 32, 1,
+                                &awdw.atom as *const _ as *const _);
+
+            xcb_change_property(connection, XCB_PROP_MODE_REPLACE as u8,
+                                window, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8,
+                                title.len() as u32, cstr(title) as *const _);
+        }
+
+        unsafe {
+            ::libc::free(reply as *mut ::libc::c_void);
+            xcb_map_window(connection, window);
+        }
+
+        window
     }
 
     fn init_xcb_connection(&mut self) {
@@ -247,7 +300,8 @@ impl ExampleBase {
     }
 
     fn handle_event(&mut self, event: *const xcb_generic_event_t) {
-        unimplemented!()
+        println!("handle_event: unimplemented");
+        //unimplemented!()
     }
 
     fn get_memory_type<F>(&mut self, type_bits: u32, properties: F, type_index: &[u32; 32])

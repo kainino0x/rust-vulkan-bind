@@ -25,3 +25,7 @@ pub fn vksuccess(res: vk::Result) {
 macro_rules! vktry {
     ( $res:expr ) => { try!(::util::vkwrap($res)) }
 }
+
+pub fn cstr(s: &str) -> *const i8 {
+    ::std::ffi::CString::new(s).unwrap().as_ptr()
+}
